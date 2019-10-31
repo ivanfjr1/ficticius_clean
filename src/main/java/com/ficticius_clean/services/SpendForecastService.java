@@ -1,6 +1,8 @@
 package com.ficticius_clean.services;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,54 +16,47 @@ import com.ficticius_clean.model.Vehicle;
 
 @Service
 public class SpendForecastService {
-	
+
 	@Autowired
 	VehicleService vehicleService;
-	
-	public List<SpendForecastOutputDto> calculateSpendingForecast(SpendForecastInputDto input) {
-		List<SpendForecastOutputDto> sfVehicles = new ArrayList<>();
+
+	public List<SpendForecastOutputDto> calculateSpendingForecast(SpendForecastInputDto input) {		
 
 		List<Vehicle> vehicles = vehicleService.findAll();
-		
-		for (Vehicle vehicle : vehicles) {
-			SpendForecastOutputDto sfVehicle = new SpendForecastOutputDto();
-			
-			sfVehicle.setBrand(vehicle.getBrand());
-			sfVehicle.setFabricationDate(vehicle.getFabricationDate());
-			sfVehicle.setModel(vehicle.getModel());
-			sfVehicle.setName(vehicle.getName());
-			sfVehicle.setTotalFuelSpent(this.calculateTotalFuelSpent(vehicle, input));
-			sfVehicle.setTotalSpending(this.calculateTotalSpending(vehicle, input));
-			
-			sfVehicles.add(sfVehicle);
-		}
-		
-		sfVehicles = sfVehicles.stream()
-				.sorted(Comparator.comparing(SpendForecastOutputDto::getTotalSpending))
-				.collect(Collectors.toList());
-		
-		return orderBySpending(sfVehicles);
-	}
-	
-	private List<SpendForecastOutputDto> orderBySpending(List<SpendForecastOutputDto> sfVehicles) {
-		return sfVehicles;
-	}
-	
-	public Double calculateTotalFuelSpent(Vehicle vehicle, SpendForecastInputDto sfInput) {
-		Double totalSpentCity = 0.0;
-		Double totalSpentHighway = 0.0;
-		
-		if (sfInput.getTotalKmCity() != null)
-			totalSpentCity = (sfInput.getTotalKmCity() / vehicle.getConsumptionMiddleCityKml());
-		
-		if (sfInput.getTotalKmHighway() != null)
-			totalSpentHighway = (sfInput.getTotalKmHighway() / vehicle.getConsumptionMiddleHighwayKml());
-		
-		return totalSpentCity + totalSpentHighway;
-	}
-	
-	public Double calculateTotalSpending(Vehicle vehicle, SpendForecastInputDto sfInput) {
-		return calculateTotalFuelSpent(vehicle, sfInput) * sfInput.getGasolinePrice();
+
+		return vehicles.stream()
+				.map(vehicle -> this.calculateAverageConsumption(vehicle, input))
+				.sorted(Comparator.comparingDouble(SpendForecastOutputDto::getTotalFuelSpent))
+				.collect(Collectors.toList());        
 	}
 
+
+	private SpendForecastOutputDto calculateAverageConsumption(
+			Vehicle vehicle,
+			SpendForecastInputDto spendForecastInput
+			) {        
+		double consumptionCity = spendForecastInput.getTotalKmCity() / vehicle.getConsumptionMiddleCityKml();
+		double consumptionHighway = spendForecastInput.getTotalKmHighway() / vehicle.getConsumptionMiddleHighwayKml();
+		double consumptionTotal = BigDecimal.valueOf(consumptionCity + consumptionHighway)
+				.setScale(2, RoundingMode.HALF_EVEN)
+				.doubleValue();
+		double totalSpending = BigDecimal.valueOf(consumptionTotal * spendForecastInput.getGasolinePrice())
+				.setScale(2, RoundingMode.HALF_EVEN)
+				.doubleValue();
+
+		SpendForecastOutputDto spendForecastOutput = new SpendForecastOutputDto();
+		spendForecastOutput.setName(vehicle.getName());
+		spendForecastOutput.setBrand(vehicle.getBrand());
+		spendForecastOutput.setModel(vehicle.getModel());
+
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(vehicle.getFabricationDate());
+
+		spendForecastOutput.setFabricationDate(calendar.getWeekYear());
+		spendForecastOutput.setTotalFuelSpent(consumptionTotal);
+		spendForecastOutput.setTotalSpending(totalSpending);
+
+		return spendForecastOutput;
+
+	}
 }

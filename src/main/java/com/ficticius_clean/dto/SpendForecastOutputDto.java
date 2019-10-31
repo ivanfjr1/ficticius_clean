@@ -1,7 +1,5 @@
 package com.ficticius_clean.dto;
 
-import java.util.Date;
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,7 +17,7 @@ public class SpendForecastOutputDto {
 	String model;
 	
 	@Getter @Setter
-	Date fabricationDate;
+	Integer fabricationDate;
 	
 	@Getter @Setter
 	Double totalFuelSpent;
