@@ -31,7 +31,7 @@ public class SpendForecastService {
 	}
 
 
-	private SpendForecastOutputDto calculateAverageConsumption(
+	public SpendForecastOutputDto calculateAverageConsumption(
 			Vehicle vehicle,
 			SpendForecastInputDto spendForecastInput
 			) {        
